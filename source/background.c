@@ -2191,7 +2191,11 @@ int background_initial_conditions(
       case propto_omega:
 	pvecback_integration[pba->index_bi_M_pl_smg] = pba->parameters_2_smg[4];
 	break;	
-      
+            
+      case oscillating_omega:
+	pvecback_integration[pba->index_bi_M_pl_smg] = pba->parameters_2_smg[4];
+	break;	
+		    
       case propto_scale:
 	pvecback_integration[pba->index_bi_M_pl_smg] = pba->parameters_2_smg[4];
 	break;	
@@ -2448,6 +2452,7 @@ int background_derivs(
   /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmic time)**/
   if (pba->has_smg == _TRUE_){
     /** - Planck mass equation (if parameterization in terms of alpha_m **/
+    printf("The value of pvecback[pba->index_bg_mpl_running_smg] before calculating dy[pba->index_bi_M_pl_smg] is %8.20lf\n",pvecback[pba->index_bg_mpl_running_smg]);
     if (pba->M_pl_evolution_smg == _TRUE_)
       dy[pba->index_bi_M_pl_smg] = y[pba->index_bi_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_mpl_running_smg]*y[pba->index_bi_M_pl_smg];   //in this case the running has to be integrated (eq 3.3 of 1404.3713 yields M2' = aH\alpha_M)
   }  
@@ -2492,12 +2497,15 @@ int background_gravity_functions(
     
     //TODO: this structure will need revision if we have more complicated parameterizations
     //TODO: separate parameterization from background evolution
-    double a, M_pl;
+    double a, M_pl, tau;
     double rho_tot, p_tot;
     double Omega_smg;
-    
+  
+ printf("The value of pvecback_B[pba->index_bi_tau] at the beginning of background_gravity_function is %8.20lf\n",pvecback_B[pba->index_bi_tau]);
+ 
     a = pvecback_B[pba->index_bi_a];
-    M_pl = pvecback_B[pba->index_bi_M_pl_smg];    
+    tau = pvecback_B[pba->index_bi_tau];
+    M_pl = pvecback_B[pba->index_bi_M_pl_smg];
     
     rho_tot = pvecback[pba->index_bg_rho_tot_wo_smg];
     p_tot = pvecback[pba->index_bg_p_tot_wo_smg];
@@ -2545,6 +2553,20 @@ int background_gravity_functions(
       pvecback[pba->index_bg_braiding_smg] = c_b*Omega_smg;	
       pvecback[pba->index_bg_tensor_excess_smg] = c_t*Omega_smg;
       pvecback[pba->index_bg_mpl_running_smg] = c_m*Omega_smg;
+      pvecback[pba->index_bg_M2_smg] = M_pl;
+    }
+        else if (pba->gravity_model_smg == oscillating_omega) {	
+      
+      double c_k = pba->parameters_2_smg[0];
+      double c_b = pba->parameters_2_smg[1];
+      double c_m = pba->parameters_2_smg[2];
+      double c_t = pba->parameters_2_smg[3];      
+      double freq = pba->parameters_2_smg[5]*pba->H0;
+      
+      pvecback[pba->index_bg_kineticity_smg] = c_k*Omega_smg*cos(freq*tau);
+      pvecback[pba->index_bg_braiding_smg] = c_b*Omega_smg*cos(freq*tau);	
+      pvecback[pba->index_bg_tensor_excess_smg] = c_t*Omega_smg*cos(freq*tau);
+      pvecback[pba->index_bg_mpl_running_smg] = c_m*Omega_smg*cos(freq*tau);
       pvecback[pba->index_bg_M2_smg] = M_pl;
     }
     else if (pba->gravity_model_smg == propto_scale) {	
@@ -2677,6 +2699,13 @@ int background_gravity_parameters(
 	    pba->parameters_2_smg[4]);
      break;
      
+   case oscillating_omega:
+     printf("Modified gravity: oscillating_omega with parameters: \n");
+     printf("-> c_K = %g, c_B = %g, c_M = %g, c_T = %g, M_*^2_init = %g, freq (H0) = %g \n",
+	    pba->parameters_2_smg[0],pba->parameters_2_smg[1],pba->parameters_2_smg[2],pba->parameters_2_smg[3],
+	    pba->parameters_2_smg[4], pba->parameters_2_smg[5]);
+     break;
+
    case propto_scale:
      printf("Modified gravity: propto_scale with parameters: \n");
      printf("-> c_K = %g, c_B = %g, c_M = %g, c_T = %g, M_*^2_init = %g \n",
